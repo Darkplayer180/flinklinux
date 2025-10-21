@@ -94,6 +94,7 @@ static int flink_axi_remove(struct platform_device *pdev);
 	    { .compatible = COMPATIBLE_NODE},
 	    {},
 	};
+	MODULE_DEVICE_TABLE(of, my_driver_of_match);
 
 	static struct platform_driver flink_axi_driver = {
 	 	.driver = {
