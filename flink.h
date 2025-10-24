@@ -29,6 +29,14 @@
 	//#define DBG_IRQ
 #endif
 
+// ############ Backward compatibility ############
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
+# define CLASS_CREATE(name) class_create(name)
+#else
+# define CLASS_CREATE(name) class_create(THIS_MODULE, name)
+#endif
+
+
 // ############ flink error numbers ############
 #define UNKOWN_ERROR -1
 
