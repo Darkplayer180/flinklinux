@@ -17,7 +17,6 @@
 #include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/fs.h>
-#include <linux/version.h>
 #include "flink_ioctl.h"
 
 // ################# Debugging #################
@@ -28,13 +27,6 @@
 // This is disabled by default, even if debugging is enabled, because the code in the ISR is very time-critical.
 #ifdef DBG
 	//#define DBG_IRQ
-#endif
-
-// ############ Backward compatibility ############
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,4,0)
-# define CLASS_CREATE(name) class_create(name)
-#else
-# define CLASS_CREATE(name) class_create(THIS_MODULE, name)
 #endif
 
 // ############ flink error numbers ############

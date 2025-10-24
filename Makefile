@@ -24,9 +24,6 @@ else
 	ccflags-y := -std=gnu99
 	obj-m := flink.o
 
-# TODO: Noch mittes flag excludierbar hinzufügen
-#	obj-m += subsystem_bridges/flink_bridge_gpio.o
-
 ifeq ($(CONFIG_PCI),y) 
 #$(info +pci)
 	obj-m += flink_pci.o 

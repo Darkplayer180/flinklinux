@@ -823,7 +823,7 @@ static int __init flink_init(void) {
 	int error = 0;
 	
 	// Create sysfs class
-	sysfs_class = CLASS_CREATE(SYSFS_CLASS_NAME);
+	sysfs_class = class_create(THIS_MODULE, SYSFS_CLASS_NAME);
 	
 	// ---- All done ----
 	printk(KERN_INFO "[%s] Module sucessfully loaded\n", MODULE_NAME);
