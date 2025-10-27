@@ -1056,8 +1056,8 @@ static int flinkcore_add_gpio_child(struct device *parent,
 	};
 
     /* Parent-IRQ als 6. Parameter nur setzen, wenn sinnvoll; hier 0 */
-	return devm_mfd_add_devices(parent, PLATFORM_DEVID_AUTO,
-	                            &cell, 1, NULL, 0, NULL);
+	return mfd_add_devices(parent, PLATFORM_DEVID_AUTO,
+	                       &cell, 1, NULL, 0, NULL);
 }
 
 /*******************************************************************
@@ -1185,7 +1185,7 @@ int flink_device_add(struct flink_device* fdev) {
 
 		// connect subdevices to subsystems fomr kernel
 		resource_size_t gpio_phys_base = 0x7aa00000 + 0x1000;
-    resource_size_t gpio_size      = 0x100;
+		resource_size_t gpio_size      = 0x100;
 		flinkcore_add_gpio_child(fdev->sysfs_device, gpio_phys_base, gpio_size);
 		
 		return fdev->id;
@@ -1211,6 +1211,9 @@ int flink_device_remove(struct flink_device* fdev) {
 		device_destroy(sysfs_class, fdev->char_device->dev);
 		cdev_del(fdev->char_device);
 		unregister_chrdev_region(fdev->char_device->dev, 1);
+
+		// Remove child brigdes to subsystems
+		mfd_remove_devices(fdev->sysfs_device);
 		
 		return 0;
 	}
