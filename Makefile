@@ -25,7 +25,7 @@ else
 	obj-m := flink.o
 
 # TODO: Noch mittes flag excludierbar hinzufügen
-#	obj-m += subsystem_bridges/flink_bridge_gpio.o
+	obj-m += subsystem-bridges/flink_bridge_gpio.o
 
 ifeq ($(CONFIG_PCI),y) 
 #$(info +pci)

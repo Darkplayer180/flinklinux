@@ -42,6 +42,7 @@
 #include <linux/interrupt.h>
 #include <linux/signal.h>
 #include <linux/sched/signal.h>
+#include <linux/mfd/core.h>
 
 #include "flink.h"
 
@@ -1027,6 +1028,38 @@ static irqreturn_t flink_threaded_irq_handler(int irq, void *dev_id) {
 	return IRQ_HANDLED;
 }
 
+/* load a child driver to connect flink with linux subsystems*/
+static int flinkcore_add_gpio_child(struct device *parent,
+                                    resource_size_t base, 
+																		resource_size_t size)
+{
+	struct resource res[] = {
+		{
+			.start = base,
+			.end   = base + size - 1,
+			.flags = IORESOURCE_MEM,
+		},
+	};
+
+//	/* optionale Properties fürs Child (der Hello-World-Treiber ignoriert sie): */
+//	static const struct property_entry props[] = {
+//		{ PROPERTY_ENTRY_U32("ngpios", 32)},
+//		{},
+//	};
+
+	struct mfd_cell cell = {
+		.name          = "flink-bridge-gpio",     /* matcht .driver.name */
+		.of_compatible = "ost,flink-bridge-gpio", /* matcht OF-Tabelle */
+		.resources     = res,
+		.num_resources = ARRAY_SIZE(res),
+//		.properties    = props,
+	};
+
+    /* Parent-IRQ als 6. Parameter nur setzen, wenn sinnvoll; hier 0 */
+	return devm_mfd_add_devices(parent, PLATFORM_DEVID_AUTO,
+	                            &cell, 1, NULL, 0, NULL);
+}
+
 /*******************************************************************
  *                                                                 *
  *  Public methods                                                 *
@@ -1149,6 +1182,11 @@ int flink_device_add(struct flink_device* fdev) {
 		
 		// Create device node
 		create_device_node(fdev);
+
+		// connect subdevices to subsystems fomr kernel
+		resource_size_t gpio_phys_base = 0x7aa00000 + 0x1000;
+    resource_size_t gpio_size      = 0x100;
+		flinkcore_add_gpio_child(fdev->sysfs_device, gpio_phys_base, gpio_size);
 		
 		return fdev->id;
 	}
