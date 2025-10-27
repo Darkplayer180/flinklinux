@@ -17,6 +17,7 @@
 #include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/fs.h>
+#include <linux/version.h>
 #include "flink_ioctl.h"
 
 // ################# Debugging #################
