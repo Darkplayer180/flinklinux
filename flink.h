@@ -19,6 +19,7 @@
 #include <linux/fs.h>
 #include <linux/version.h>
 #include "flink_ioctl.h"
+#include "flink_funcid.h"
 
 // ################# Debugging #################
 // Uncomment it to see debugging information in the kernel log.
@@ -168,9 +169,6 @@ extern int                     flink_select_subdevice(struct file* f, u8 subdevi
 #define SUBDEV_UNIQUE_ID_OFFSET		0x000C	// byte
 #define SUBDEV_STATUS_OFFSET		0x0010	// byte
 #define SUBDEV_CONFIG_OFFSET		0x0014	// byte
-
-// Types
-#define INFO_FUNCTION_ID			0x00
 
 // Userland types and sizes
 /// @brief Structure containing information for ioctl system calls accessing single bits

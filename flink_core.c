@@ -823,7 +823,7 @@ static int __init flink_init(void) {
 	int error = 0;
 	
 	// Create sysfs class
-  sysfs_class = CLASS_CREATE(SYSFS_CLASS_NAME);
+	sysfs_class = CLASS_CREATE(SYSFS_CLASS_NAME);
 	
 	// ---- All done ----
 	printk(KERN_INFO "[%s] Module sucessfully loaded\n", MODULE_NAME);
@@ -959,7 +959,7 @@ static unsigned int scan_for_subdevices(struct flink_device* fdev) {
 			subdevice_counter++;
 			
 			// if subdevice is info subdevice -> read memory length
-			if(new_subdev->function_id == INFO_FUNCTION_ID) {
+			if(new_subdev->function_id == INFO_DEVICE_ID) {
 				total_mem_size = fdev->bus_ops->read32(fdev, current_address + MAIN_HEADER_SIZE + SUB_HEADER_SIZE);
 				last_address = total_mem_size - 1;
 				#if defined(DBG)
