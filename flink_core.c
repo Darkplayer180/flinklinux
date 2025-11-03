@@ -42,6 +42,7 @@
 #include <linux/interrupt.h>
 #include <linux/signal.h>
 #include <linux/sched/signal.h>
+#include <linux/mfd/core.h>
 
 #include "flink.h"
 
@@ -913,6 +914,37 @@ alloc_chardev_region_failed:
 	return error;
 }
 
+#ifdef CONFIG_FLINK_BRIDGES
+// load a child driver to connect flink with linux subsystems 
+static int flink_add_subsystem_bridge(struct flink_subdevice *subdev) {
+	int match = false;
+
+	struct mfd_cell cell = {
+		.id            = subdev->id,
+		.platform_data = subdev,
+		.pdata_size    = sizeof(*subdev),
+	};
+
+	switch(subdev->function_id) {
+		case GPIO_INTERFACE_ID:
+			match = true;
+			cell.name = BRIDGE_GPIO_NAME;
+			break;
+		default:
+#if defined(DBG)
+		  printk(KERN_INFO "[%s]: \"%s\" did not have an implementation for a kernel subsystem", MODULE_NAME, fmit_lkm_lut[subdev->function_id]);	
+#endif
+			break;
+	}
+	
+	if(match) {
+		return mfd_add_devices(subdev->parent->sysfs_device, PLATFORM_DEVID_AUTO,
+		                      &cell, 1, NULL, 0, NULL);
+	}
+	return 0;
+}
+#endif
+
 /**
  * scan_for_subdevices() - scan flink device for subdevices
  * @fdev: the flink device to scan
@@ -1133,6 +1165,11 @@ void flink_device_init_irq(struct flink_device* fdev,
 int flink_device_add(struct flink_device* fdev) {
 	static unsigned int dev_counter = 0;
 	unsigned int nof_subdevices = 0;
+#ifdef CONFIG_FLINK_BRIDGES
+	struct flink_subdevice* sdev;
+	struct flink_subdevice* sdev_next;
+#endif
+
 	if(fdev != NULL) {
 		// Add device to list
 		fdev->id = dev_counter++;
@@ -1149,7 +1186,18 @@ int flink_device_add(struct flink_device* fdev) {
 		
 		// Create device node
 		create_device_node(fdev);
-		
+
+#ifdef CONFIG_FLINK_BRIDGES
+		// Lookup for bridges matching a subdev
+		if(true) { // TODO: add entry to DT to deactivate this
+			list_for_each_entry_safe(sdev, sdev_next, &(fdev->subdevices), list) {
+				#if defined(DBG)
+					printk(KERN_DEBUG "[%s] Tring to add a bridge for subdevice #%u (from device #%u)", MODULE_NAME, sdev->id, fdev->id);
+				#endif
+				flink_add_subsystem_bridge(sdev);
+			}
+		}
+#endif
 		return fdev->id;
 	}
 	return UNKOWN_ERROR;
@@ -1173,6 +1221,9 @@ int flink_device_remove(struct flink_device* fdev) {
 		device_destroy(sysfs_class, fdev->char_device->dev);
 		cdev_del(fdev->char_device);
 		unregister_chrdev_region(fdev->char_device->dev, 1);
+
+		// Remove child brigdes to subsystems
+		mfd_remove_devices(fdev->sysfs_device);
 		
 		return 0;
 	}

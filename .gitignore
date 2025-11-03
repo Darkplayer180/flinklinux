@@ -11,5 +11,5 @@ modules.order
 .directory
 .tmp_versions/
 flink_ioctl.h
-flink_fmi.c
+flink_fmi.h
 flink_funcid.h
