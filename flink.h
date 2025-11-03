@@ -20,6 +20,7 @@
 #include <linux/version.h>
 #include "flink_ioctl.h"
 #include "flink_funcid.h"
+#include "flink_fmi.h"
 
 // ################# Debugging #################
 // Uncomment it to see debugging information in the kernel log.
@@ -190,5 +191,10 @@ struct ioctl_container_t {
 
 // size of struct 'flink_subdevice' without linked list information (in bytes)
 #define FLINKLIB_SUBDEVICE_SIZE		(sizeof(struct flink_subdevice)-offsetof(struct flink_subdevice,id))
+
+#ifdef CONFIG_FLINK_BRIDGES
+	// Bridges name strings
+	#define BRIDGE_GPIO_NAME "flink-bridge-gpio"
+#endif
 
 #endif /* FLINK_H_ */

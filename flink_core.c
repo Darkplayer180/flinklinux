@@ -914,6 +914,37 @@ alloc_chardev_region_failed:
 	return error;
 }
 
+#ifdef CONFIG_FLINK_BRIDGES
+// load a child driver to connect flink with linux subsystems 
+static int flink_add_subsystem_bridge(struct flink_subdevice *subdev) {
+	int match = false;
+
+	struct mfd_cell cell = {
+		.id            = subdev->id,
+		.platform_data = subdev,
+		.pdata_size    = sizeof(*subdev),
+	};
+
+	switch(subdev->function_id) {
+		case GPIO_INTERFACE_ID:
+			match = true;
+			cell.name = BRIDGE_GPIO_NAME;
+			break;
+		default:
+#if defined(DBG)
+		  printk(KERN_INFO "[%s]: \"%s\" did not have an implementation for a kernel subsystem", MODULE_NAME, fmit_lkm_lut[subdev->function_id]);	
+#endif
+			break;
+	}
+	
+	if(match) {
+		return mfd_add_devices(subdev->parent->sysfs_device, PLATFORM_DEVID_AUTO,
+		                      &cell, 1, NULL, 0, NULL);
+	}
+	return 0;
+}
+#endif
+
 /**
  * scan_for_subdevices() - scan flink device for subdevices
  * @fdev: the flink device to scan
@@ -1028,38 +1059,6 @@ static irqreturn_t flink_threaded_irq_handler(int irq, void *dev_id) {
 	return IRQ_HANDLED;
 }
 
-/* load a child driver to connect flink with linux subsystems*/
-static int flinkcore_add_gpio_child(struct device *parent,
-                                    resource_size_t base, 
-																		resource_size_t size)
-{
-	struct resource res[] = {
-		{
-			.start = base,
-			.end   = base + size - 1,
-			.flags = IORESOURCE_MEM,
-		},
-	};
-
-//	/* optionale Properties fürs Child (der Hello-World-Treiber ignoriert sie): */
-//	static const struct property_entry props[] = {
-//		{ PROPERTY_ENTRY_U32("ngpios", 32)},
-//		{},
-//	};
-
-	struct mfd_cell cell = {
-		.name          = "flink-bridge-gpio",     /* matcht .driver.name */
-		.of_compatible = "ost,flink-bridge-gpio", /* matcht OF-Tabelle */
-		.resources     = res,
-		.num_resources = ARRAY_SIZE(res),
-//		.properties    = props,
-	};
-
-    /* Parent-IRQ als 6. Parameter nur setzen, wenn sinnvoll; hier 0 */
-	return mfd_add_devices(parent, PLATFORM_DEVID_AUTO,
-	                       &cell, 1, NULL, 0, NULL);
-}
-
 /*******************************************************************
  *                                                                 *
  *  Public methods                                                 *
@@ -1166,6 +1165,11 @@ void flink_device_init_irq(struct flink_device* fdev,
 int flink_device_add(struct flink_device* fdev) {
 	static unsigned int dev_counter = 0;
 	unsigned int nof_subdevices = 0;
+#ifdef CONFIG_FLINK_BRIDGES
+	struct flink_subdevice* sdev;
+	struct flink_subdevice* sdev_next;
+#endif
+
 	if(fdev != NULL) {
 		// Add device to list
 		fdev->id = dev_counter++;
@@ -1183,11 +1187,17 @@ int flink_device_add(struct flink_device* fdev) {
 		// Create device node
 		create_device_node(fdev);
 
-		// connect subdevices to subsystems fomr kernel
-		resource_size_t gpio_phys_base = 0x7aa00000 + 0x1000;
-		resource_size_t gpio_size      = 0x100;
-		flinkcore_add_gpio_child(fdev->sysfs_device, gpio_phys_base, gpio_size);
-		
+#ifdef CONFIG_FLINK_BRIDGES
+		// Lookup for bridges matching a subdev
+		if(true) { // TODO: add entry to DT to deactivate this
+			list_for_each_entry_safe(sdev, sdev_next, &(fdev->subdevices), list) {
+				#if defined(DBG)
+					printk(KERN_DEBUG "[%s] Tring to add a bridge for subdevice #%u (from device #%u)", MODULE_NAME, sdev->id, fdev->id);
+				#endif
+				flink_add_subsystem_bridge(sdev);
+			}
+		}
+#endif
 		return fdev->id;
 	}
 	return UNKOWN_ERROR;
