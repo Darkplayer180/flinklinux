@@ -1,3 +1,27 @@
+/*******************************************************************
+ *   _________     _____      _____    ____  _____    ___  ____    *
+ *  |_   ___  |  |_   _|     |_   _|  |_   \|_   _|  |_  ||_  _|   *
+ *    | |_  \_|    | |         | |      |   \ | |      | |_/ /     *
+ *    |  _|        | |   _     | |      | |\ \| |      |  __'.     *
+ *   _| |_        _| |__/ |   _| |_    _| |_\   |_    _| |  \ \_   *
+ *  |_____|      |________|  |_____|  |_____|\____|  |____||____|  *
+ *                                                                 *
+ *******************************************************************
+ *                                                                 *
+ *  Core Module                                                    *
+ *                                                                 *
+ *******************************************************************/
+
+/** @file flink_brige_gpio.c
+ *  @brief Subsystem-Bridge Module for gpio. 
+ * 
+ *  It connects the GPIO subdevices of a Flink device with 
+ *  the GPIO subsystem of the Linux kernel. This bridge makes it 
+ *  possible to use GPIO with the default libgpiod.
+ *
+ *  @author Patrick Good
+ */
+
 #include <linux/of.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
