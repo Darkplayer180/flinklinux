@@ -2,6 +2,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/regmap.h>
+#include <linux/bitmap.h>
 #include <linux/mfd/core.h>
 #include <linux/gpio/driver.h>
 #include <linux/platform_device.h>
@@ -15,7 +16,7 @@ MODULE_AUTHOR("Patrick Good");
 /* ============== Defines Module ================= */
 #define MODULE_NAME THIS_MODULE->name
 #define MAX_LABEL_SIZE 32 /* Due to: Max Display length of userland tools (gpioinfo) */
-
+#define DBG // TODO: Remove!!!
 /* ============== Register offsets ================= */
 /**
  * TODO: 
@@ -52,19 +53,19 @@ static inline u32 OFFSET_IN_REG(u32 channel){return channel&(REGSIZE_BIT-1);}
 
 /* ============== Bridge private data ================= */
 struct flink_bridge_gpio {
-	struct device          *dev;
-	struct flink_subdevice *subdev;
-	struct regmap          *map;
-	struct gpio_chip       *gc;
+    struct device          *dev;
+    struct flink_subdevice *subdev;
+    struct regmap          *map;
+    struct gpio_chip       *gc;
     u32                     reg_gpio_val_0; /* first val reg offset */
-	bool                    can_sleep;
+    bool                    can_sleep;
     bool                    fast_io;
     char                    label[MAX_LABEL_SIZE];
 };
 
 /* ============== Regmap ================= */
 struct fb_gpio_regctx {
-	struct flink_subdevice *subdev;
+    struct flink_subdevice *subdev;
     struct flink_bus_ops   *bus_ops;
     struct device          *dev;
 };
@@ -75,8 +76,8 @@ static int fgpio_reg_read(void *context, unsigned int reg, unsigned int *val) {
     *val = ctx->bus_ops->read32(ctx->subdev->parent, addr);
     #ifdef DBG
         printk(KERN_DEBUG "  -> reg_read\n");
-		printk(KERN_DEBUG "    -> Device offset address: 0x%x\n", addr);
-		printk(KERN_DEBUG "    -> Device gpio value:     0x%x\n", *val);
+        printk(KERN_DEBUG "    -> Device offset address: 0x%X\n", addr);
+        printk(KERN_DEBUG "    -> Device gpio value:     0x%X\n", *val);
     #endif
     return 0;
 }
@@ -86,8 +87,8 @@ static int fgpio_reg_write(void *context, unsigned int reg, unsigned int val) {
     u32 addr = ctx->subdev->base_addr + reg;
     #ifdef DBG
         printk(KERN_DEBUG "  -> reg_write");
-		printk(KERN_DEBUG "    -> Device offset address: 0x%x", addr);
-		printk(KERN_DEBUG "    -> Device gpio value:     0x%x", val);
+        printk(KERN_DEBUG "    -> Device offset address: 0x%x\n", addr);
+        printk(KERN_DEBUG "    -> Device gpio value:     0x%x\n", val);
     #endif
     return ctx->bus_ops->write32(ctx->subdev->parent, addr, val);
 }
@@ -104,10 +105,10 @@ static int fgpio_get_direction(struct gpio_chip *gc, unsigned int offset) {
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
     #ifdef DBG
         printk(KERN_DEBUG "[%s] Get Direction device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
-        printk(KERN_DEBUG "  -> Device gpio offset:     0x%x\n", offset);
+        printk(KERN_DEBUG "  -> Device gpio offset:     0x%X\n", offset);
     #endif
     unsigned int reg = REG_GPIO_DIR(offset);
-   	unsigned int dir;
+    unsigned int dir;
     int ret = regmap_read(fg->map, reg, &dir);
     if(unlikely(ret)) {
         return ret;
@@ -123,7 +124,7 @@ static int fgpio_set_direction_input(struct gpio_chip *gc, unsigned int offset) 
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
     #ifdef DBG
         printk(KERN_DEBUG "[%s] Set Direction in device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
-        printk(KERN_DEBUG "  -> Device gpio offset:     0x%x\n", offset);
+        printk(KERN_DEBUG "  -> Device gpio offset:     0x%X\n", offset);
     #endif
     unsigned int reg = REG_GPIO_DIR(offset);
     unsigned int new_off = OFFSET_IN_REG(offset);
@@ -138,8 +139,8 @@ static int fgpio_set_direction_output(struct gpio_chip *gc,
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
     #ifdef DBG
         printk(KERN_DEBUG "[%s] Set Direction out device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
-        printk(KERN_DEBUG "  -> Device gpio offset:     0x%x\n", offset);
-        printk(KERN_DEBUG "  -> Device gpio value:     0x%x\n", value);
+        printk(KERN_DEBUG "  -> Device gpio offset:     0x%X\n", offset);
+        printk(KERN_DEBUG "  -> Device gpio value:     0x%X\n", value);
     #endif
     unsigned int new_off = OFFSET_IN_REG(offset);
     unsigned int mask = BIT(new_off);
@@ -178,13 +179,16 @@ static int fgpio_get_value(struct gpio_chip *gc, unsigned int offset) {
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
     #ifdef DBG
         printk(KERN_DEBUG "[%s] Get Value device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
-        printk(KERN_DEBUG "  -> Device gpio offset:     0x%x\n", offset);
+        printk(KERN_DEBUG "  -> Device gpio offset:     0x%X\n", offset);
     #endif
     unsigned int reg = REG_GPIO_VALUE(offset, fg->reg_gpio_val_0);
     unsigned int new_off = OFFSET_IN_REG(offset);
-   	unsigned int val;
+    unsigned int val;
     int ret = regmap_read(fg->map, reg, &val);
     if(unlikely(ret)) {
+        printk(KERN_ERR "[%s]:Flink[%u] Failed to get value err: %i\n", MODULE_NAME, fg->subdev->parent->id, ret);
+        printk(KERN_ERR "[%s]:Flink[%u]   -> Reg 0x%X \n", MODULE_NAME, fg->subdev->parent->id, reg);
+        printk(KERN_ERR "[%s]:Flink[%u]   -> Values 0x%X \n", MODULE_NAME, fg->subdev->parent->id, val);     
         return ret;
     }
     return !!(val & BIT(new_off));
@@ -196,29 +200,75 @@ static void fgpio_set_value(struct gpio_chip *gc,
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
     #ifdef DBG
         printk(KERN_DEBUG "[%s] Set Value device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
-        printk(KERN_DEBUG "  -> Device gpio offset:     0x%x\n", offset);
-        printk(KERN_DEBUG "  -> Device gpio value:     0x%x\n", value);
+        printk(KERN_DEBUG "  -> Device gpio offset:     0x%X\n", offset);
+        printk(KERN_DEBUG "  -> Device gpio value:     0x%X\n", value);
     #endif
     unsigned int reg = REG_GPIO_VALUE(offset, fg->reg_gpio_val_0);
     unsigned int new_off = OFFSET_IN_REG(offset);
     unsigned int mask = BIT(new_off);
-   	unsigned int values = (value) ? mask : 0;
-    int ret = regmap_update_bits(fg->map, reg, mask, values);
+    unsigned int values = (value) ? mask : 0;
+    if(unlikely(regmap_update_bits(fg->map, reg, mask, values)>0)) {
+        printk(KERN_ERR "[%s]:Flink[%u] Failed to set value\n", MODULE_NAME, fg->subdev->parent->id);
+        printk(KERN_ERR "[%s]:Flink[%u]   -> Mask 0x%X \n", MODULE_NAME, fg->subdev->parent->id, mask);
+        printk(KERN_ERR "[%s]:Flink[%u]   -> Values 0x%X \n", MODULE_NAME, fg->subdev->parent->id, values);     
+    }
 }
 
-/* TODO: To read multiple IO faster
 static int fgpio_get_multiple_values(struct gpio_chip *gc,
                                      unsigned long *mask,
                                      unsigned long *bits) {
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
+    u32 nbanks = DIV_ROUND_UP(gc->ngpio, REGSIZE_BIT);
+    u32 mask32[nbanks], values32[nbanks];
+    bitmap_to_arr32(mask32, mask, gc->ngpio);
+    int ret;
+    #ifdef DBG
+        printk(KERN_DEBUG "[%s] Get multiple Value regs on device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
+        printk(KERN_DEBUG "  -> Device mask:  0x%*pb\n", gc->ngpio, mask);
+    #endif
+    for(int i=0; i<nbanks; i++) {
+        if(mask32[i]>0) {
+            ret = regmap_read(fg->map, fg->reg_gpio_val_0+i*REGSIZE_BYTE, &(values32[i]));
+            if(unlikely(ret<0)) {
+                printk(KERN_ERR "[%s]:Flink[%u] Failed to read value reg: %i err: %i\n", MODULE_NAME, fg->subdev->parent->id, i, ret);
+                printk(KERN_ERR "[%s]:Flink[%u]   -> Mask 0x%X \n", MODULE_NAME, fg->subdev->parent->id, mask32[i]);
+                printk(KERN_ERR "[%s]:Flink[%u]   -> Values 0x%X \n", MODULE_NAME, fg->subdev->parent->id, values32[i]);
+                return ret;
+            }
+            values32[i] &= mask32[i];
+        }
+    }
+    bitmap_from_arr32(bits, values32, gc->ngpio);
     return 0;
 }
+
 static void fgpio_set_multiple_values(struct gpio_chip *gc,
                                       unsigned long *mask,
                                       unsigned long *bits) {
     struct flink_bridge_gpio *fg = gpiochip_get_data(gc);
+    u32 nbanks = DIV_ROUND_UP(gc->ngpio, REGSIZE_BIT);
+    u32 mask32[nbanks], values32[nbanks];
+    bitmap_to_arr32(mask32, mask, gc->ngpio);
+    bitmap_to_arr32(values32, bits, gc->ngpio);
+    int ret;
+    #ifdef DBG
+        printk(KERN_DEBUG "[%s] Set multiple Value regs on device #%u GPIO's ...\n", MODULE_NAME, fg->subdev->parent->id);
+        printk(KERN_DEBUG "  -> Device mask:  0x%*pb\n", gc->ngpio, mask);
+        printk(KERN_DEBUG "  -> Device value: 0x%*pb\n", gc->ngpio, bits);
+    #endif
+    for(int i=0; i<nbanks; i++) {
+        if(mask32[i]>0) {
+            ret = regmap_update_bits(fg->map, fg->reg_gpio_val_0+i*REGSIZE_BYTE, mask32[i], values32[i]);
+            if(unlikely(ret<0)) {
+                printk(KERN_ERR "[%s]:Flink[%u] Failed to Update value reg: %i err: %i\n", MODULE_NAME, fg->subdev->parent->id, i, ret);
+                printk(KERN_ERR "[%s]:Flink[%u]   -> Mask 0x%X \n", MODULE_NAME, fg->subdev->parent->id, mask32[i]);
+                printk(KERN_ERR "[%s]:Flink[%u]   -> Values 0x%X \n", MODULE_NAME, fg->subdev->parent->id, values32[i]);
+                return;
+            }
+        }
+    }
+    return;
 }
-*/
 
 /* ============== Init/remove Functions ================= */
 static int flink_bridge_gpio_probe(struct platform_device *pdev) {
@@ -226,7 +276,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
     int ret = 0;
     struct device *dev = &pdev->dev;
     struct fb_gpio_regctx *rmctx; /* regmap context */
-	struct regmap_config *rmcfg; /* regmap config */
+    struct regmap_config *rmcfg; /* regmap config */
     struct regmap_bus *rmbo; /* regmap bus ops */
     struct flink_bridge_gpio *fg = NULL;
     if(!dev) {
@@ -263,7 +313,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
         goto ALLOC_RCTX;
     }
 
-	rmcfg = devm_kzalloc(dev, sizeof(*rmcfg) ,GFP_KERNEL);
+    rmcfg = devm_kzalloc(dev, sizeof(*rmcfg) ,GFP_KERNEL);
     if(!(rmcfg)) {
         printk(KERN_WARNING "[%s]: Faild to alloc rmcfg\n", MODULE_NAME);
         ret = -ENOMEM;
@@ -304,8 +354,8 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
     fg->gc->get                = fgpio_get_value;
     fg->gc->set                = fgpio_set_value;
     fg->gc->can_sleep          = fg->can_sleep;
-//    fg->gc->get_multiple       = fgpio_get_multiple_values;
-//    fg->gc->set_multiple       = fgpio_set_multiple_values;
+    fg->gc->get_multiple       = fgpio_get_multiple_values;
+    fg->gc->set_multiple       = fgpio_set_multiple_values;
 
     rmctx->subdev      = subdev;
     rmctx->dev         = dev;
@@ -326,7 +376,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
     rmcfg->rd_noinc_table;
     rmcfg->use_single_read  = true;
     rmcfg->use_single_write = true;
-    rmcfg->can_multi_write  = false; // TODO: implement with TODO from: To read multiple IO faster
+    rmcfg->can_multi_write  = false;
     rmcfg->cache_type       = REGCACHE_NONE;
 
     rmbo->fast_io                   = fg->fast_io;
@@ -336,7 +386,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
     rmbo->reg_format_endian_default = REGMAP_ENDIAN_NATIVE;
 
     fg->map = devm_regmap_init(dev, rmbo, rmctx, rmcfg);
-	if (!fg->map) {
+    if (!fg->map) {
         printk(KERN_WARNING "[%s]: Faild to init regmap\n", MODULE_NAME);
         ret = -EPERM;
         goto INIT_REGMAP;
@@ -351,7 +401,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
     }
 
     #if defined(DBG)
-    printk(KERN_INFO "[%s] %s:0x%X connected to Subsystem \n", MODULE_NAME, fmit_lkm_lut[subdev->function_id], subdev->unique_id);
+    printk(KERN_INFO "[%s] Flink%u %s:0x%X connected to Subsystem \n", MODULE_NAME, subdev->parent->id, fmit_lkm_lut[subdev->function_id], subdev->unique_id);
     #endif
 
     return ret;
