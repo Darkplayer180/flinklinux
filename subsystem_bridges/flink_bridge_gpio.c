@@ -16,7 +16,7 @@ MODULE_AUTHOR("Patrick Good");
 /* ============== Defines Module ================= */
 #define MODULE_NAME THIS_MODULE->name
 #define MAX_LABEL_SIZE 32 /* Due to: Max Display length of userland tools (gpioinfo) */
-#define DBG // TODO: Remove!!!
+
 /* ============== Register offsets ================= */
 /**
  * TODO: 
