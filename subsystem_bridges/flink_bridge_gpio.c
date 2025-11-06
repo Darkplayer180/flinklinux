@@ -424,9 +424,7 @@ static int flink_bridge_gpio_probe(struct platform_device *pdev) {
         goto INIT_GPIO_CHIP;
     }
 
-    #if defined(DBG)
     printk(KERN_INFO "[%s] Flink%u %s:0x%X connected to Subsystem \n", MODULE_NAME, subdev->parent->id, fmit_lkm_lut[subdev->function_id], subdev->unique_id);
-    #endif
 
     return ret;
 
