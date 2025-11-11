@@ -29,6 +29,7 @@ CONFIG_FLINK_BRIDGES ?= y
 ifeq ($(CONFIG_FLINK_BRIDGES),y)
 	ccflags-y += -DCONFIG_FLINK_BRIDGES
 	obj-m += subsystem_bridges/flink_bridge_gpio.o
+	obj-m += subsystem_bridges/flink_bridge_wd.o
 endif
 
 ifeq ($(CONFIG_PCI),y) 

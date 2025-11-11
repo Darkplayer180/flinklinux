@@ -195,6 +195,7 @@ struct ioctl_container_t {
 #ifdef CONFIG_FLINK_BRIDGES
 	// Bridges name strings
 	#define BRIDGE_GPIO_NAME "flink-bridge-gpio"
+	#define BRIDGE_WD_NAME  "flink-bridge-watchdog"
 #endif
 
 #endif /* FLINK_H_ */
