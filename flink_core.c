@@ -930,6 +930,9 @@ static int flink_add_subsystem_bridge(struct flink_subdevice *subdev) {
 			match = true;
 			cell.name = BRIDGE_GPIO_NAME;
 			break;
+		case WD_INTERFACE_ID:
+		  match = true;
+			cell.name = BRIDGE_WD_NAME;
 		default:
 #if defined(DBG)
 		  printk(KERN_INFO "[%s]: \"%s\" did not have an implementation for a kernel subsystem", MODULE_NAME, fmit_lkm_lut[subdev->function_id]);	
