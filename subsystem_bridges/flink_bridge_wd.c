@@ -61,8 +61,6 @@ MODULE_ALIAS("platform:" BRIDGE_WD_NAME);
 #define REG_COUNTER         0x24U /* offset in Bytes */
 #define BIT_ARMED           BIT(0)
 
-static inline u32 SEC_TO_STEPS(struct flink_bridge_wd *fw, unsigned int sec){return sec*fw->clk_hz;}
-static inline unsigned int STEPS_TO_SEC(struct flink_bridge_wd *fw, u32 steps){return steps/fw->clk_hz;}
 
 static inline u32 FLINK_READ(struct flink_subdevice *sdev, u32 reg){return sdev->parent->bus_ops->read32(sdev->parent, sdev->base_addr+reg);}
 static inline int FLINK_WRITE(struct flink_subdevice *sdev, u32 reg, u32 val){return sdev->parent->bus_ops->write32(sdev->parent, sdev->base_addr+reg, val);}
@@ -76,6 +74,8 @@ struct flink_bridge_wd {
     u32                    clk_hz;
 };
 
+static inline u32 SEC_TO_STEPS(struct flink_bridge_wd *fw, unsigned int sec){return sec*fw->clk_hz;}
+static inline unsigned int STEPS_TO_SEC(struct flink_bridge_wd *fw, u32 steps){return steps/fw->clk_hz;}
 
 /* ============== Watchdog Lib Callbacks ================= */
 static int fwd_start(struct watchdog_device *wd) {
